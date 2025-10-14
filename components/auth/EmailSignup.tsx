@@ -7,6 +7,7 @@ type props = {
 };
 
 const EmailSignup = ({ setActiveView }: props) => {
+  const router = useRouter();
   return (
     <div className="flex flex-col gap-3 mt-6">
       <div
@@ -123,17 +124,13 @@ const EmailSignup = ({ setActiveView }: props) => {
           </span>
         </div>
 
-
-
         <button
-          onClick={() => setActiveView("signup")}
+          onClick={() => router.push("/verify")}
+          type="button"
           className="bg-primary text-white px-4 rounded-md h-[45px]  font-medium flex gap-3 cursor-pointer items-center justify-center hover:bg-primary/80 transition-all ease-linear duration-300"
         >
-         
           Continue{" "}
         </button>
-
-
       </form>
     </div>
   );
