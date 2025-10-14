@@ -3,6 +3,19 @@ import Image from "next/image";
 import React, { useEffect, useMemo, useState } from "react";
 
 const AuthHero = () => {
+  const renderTitle = (title: string) => {
+    const needle = " powered ";
+    const index = title.toLowerCase().indexOf(needle);
+    if (index === -1) return title;
+    const before = title.slice(0, index).trimEnd();
+    const after = title.slice(index + needle.length);
+    return (
+      <>
+        {before} <span className="block">Powered {after}</span>
+      </>
+    );
+  };
+
   const slides = useMemo(
     () => [
       {
@@ -11,7 +24,7 @@ const AuthHero = () => {
         image: "/images/Img1.jpg",
       },
       {
-        title: "AI Verification",
+        title: "AI Vetting & Reputation System",
         subtitle: "Detects fake accounts and builds seller trust scores.",
         image: "/images/Img2.png",
       },
@@ -19,7 +32,7 @@ const AuthHero = () => {
         title: "Secure Payments",
         subtitle:
           "Blockchain escrow keeps funds safe until delivery is confirmed.",
-        image: "/images/Img3.jpg",
+        image: "/images/Img1.jpg",
       },
 
       {
@@ -65,8 +78,8 @@ const AuthHero = () => {
       {/* Text and indicators */}
       <div className="z-20 h-full w-full flex flex-col justify-end absolute text-white p-10">
         <div className="flex flex-col gap-1 mb-12">
-          <h1 className="text-[36px] font-extrabold tracking-tight text-white">
-            {slides[activeIndex].title}
+          <h1 className="text-[34px] font-extrabold tracking-tight text-white">
+            {renderTitle(slides[activeIndex].title)}
           </h1>
           <p className="text text-grey-500 w-[80%]">
             {slides[activeIndex].subtitle}
