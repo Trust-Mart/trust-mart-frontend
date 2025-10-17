@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import ReactQueryProvider from "./ReactQueryProvider";
 
 const dmsans = DM_Sans({
   variable: "--font-dm",
@@ -23,7 +24,9 @@ export default function RootLayout({
       <body
         className={`${dmsans.className} antialiased`}
       >
-        {children}
+        <ReactQueryProvider>
+          {children}
+        </ReactQueryProvider>
       </body>
     </html>
   );
