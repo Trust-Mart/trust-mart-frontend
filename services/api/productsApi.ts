@@ -38,6 +38,9 @@ export const productsApi = {
       timestamp: string;
     }>(`/products/${productId}`);
   },
+  listAll(page = 1, limit = 20) {
+    return httpClient.get<SellerProductsResponse>(`/products?page=${page}&limit=${limit}`);
+  },
 };
 
 export default productsApi;
