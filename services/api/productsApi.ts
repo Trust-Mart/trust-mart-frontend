@@ -30,6 +30,14 @@ export const productsApi = {
   myProducts(page = 1, limit = 20) {
     return httpClient.get<SellerProductsResponse>(`/products/seller/my-products?page=${page}&limit=${limit}`);
   },
+  getById(productId: string | number) {
+    return httpClient.get<{
+      status: boolean;
+      message: string;
+      data: { product: SellerProduct };
+      timestamp: string;
+    }>(`/products/${productId}`);
+  },
 };
 
 export default productsApi;
