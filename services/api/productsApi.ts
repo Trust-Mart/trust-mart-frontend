@@ -41,6 +41,23 @@ export const productsApi = {
   listAll(page = 1, limit = 20) {
     return httpClient.get<SellerProductsResponse>(`/products?page=${page}&limit=${limit}`);
   },
+  update(productId: string | number, payload: UpdateProductPayload) {
+    return httpClient.put<{
+      status: boolean;
+      message: string;
+      data: { product: SellerProduct };
+      timestamp: string;
+    }>(`/products/${productId}`, payload);
+  },
+};
+
+export type UpdateProductPayload = {
+  name?: string;
+  description?: string;
+  price?: number;
+  quantity?: number;
+  currency?: string;
+  status?: string;
 };
 
 export default productsApi;

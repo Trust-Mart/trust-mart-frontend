@@ -1,9 +1,11 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Grid, List, Pencil, Trash2, Copy, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import AddProductModal from "@/components/dashboard/AddProductModal";
+import EditProductModal from "@/components/dashboard/EditProductModal";
 import productsApi, { type SellerProduct } from "@/services/api/productsApi";
+import { useQuery } from "@tanstack/react-query";
 
 type ProductVM = {
   id: string;
@@ -12,51 +14,55 @@ type ProductVM = {
   status: "draft" | "active" | string;
   currency: string;
   image_cid: string[];
+  description: string;
+  quantity: number;
 };
 
 export default function StorePage() {
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [openAdd, setOpenAdd] = useState(false);
-  const [products, setProducts] = useState<ProductVM[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [editProduct, setEditProduct] = useState<ProductVM | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "under_review" | "suspended">("all");
+  const { data, isLoading } = useQuery({
+    queryKey: ["myProducts", { page: 1, limit: 20 }],
+    queryFn: () => productsApi.myProducts(1, 20),
+  });
+  const raw: SellerProduct[] = data?.data.products ?? [];
+  const products: ProductVM[] = useMemo(() => (
+    raw.map((p) => ({
+      id: String(p.id),
+      name: p.name,
+      price: Number(p.price),
+      status: p.status,
+      currency: p.currency,
+      image_cid: p.image_cid || [],
+      description: typeof p.description === "string" ? p.description : "",
+      quantity: Number(p.quantity ?? 0),
+    }))
+  ), [raw]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter((p) => p.name.toLowerCase().includes(q));
-  }, [query, products]);
-
-  useEffect(() => {
-    let mounted = true;
-    setLoading(true);
-    productsApi
-      .myProducts()
-      .then((res) => {
-        if (!mounted) return;
-        const mapped: ProductVM[] = res.data.products.map((p: SellerProduct) => ({
-          id: String(p.id),
-          name: p.name,
-          price: Number(p.price),
-          status: p.status,
-          currency: p.currency,
-          image_cid: p.image_cid || [],
-        }));
-        setProducts(mapped);
-      })
-      .catch(() => toast.error("Failed to load products"))
-      .finally(() => setLoading(false));
-    return () => {
-      mounted = false;
-    };
-  }, []);
+    let base = products;
+    if (statusFilter !== "all") base = base.filter((p) => p.status === statusFilter);
+    if (!q) return base;
+    return base.filter((p) => p.name.toLowerCase().includes(q));
+  }, [query, products, statusFilter]);
 
   function StatusBadge({ status }: { status: ProductVM["status"] }) {
-    const styles =
-      status === "active"
-        ? "text-green-700 bg-green-100"
-        : "text-amber-700 bg-amber-100";
-    const label = status === "active" ? "Active" : "Draft";
+    let styles = "text-grey-700 bg-grey-200";
+    let label = String(status).replace(/_/g, " ");
+    if (status === "active") {
+      styles = "text-green-700 bg-green-100";
+      label = "Active";
+    } else if (status === "under_review") {
+      styles = "text-amber-700 bg-amber-100";
+      label = "Under review";
+    } else if (status === "suspended") {
+      styles = "text-red-700 bg-red-100";
+      label = "Suspended";
+    }
     return <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${styles}`}>{label}</span>;
   }
 
@@ -74,7 +80,7 @@ export default function StorePage() {
   function ProductActions({ product }: { product: ProductVM }) {
     return (
       <div className="flex items-center gap-2">
-        <button onClick={() => toast.info(`Edit “${product.name}”`)} className="p-1.5 rounded-md hover:bg-grey-100" aria-label="Edit">
+        <button onClick={() => setEditProduct(product)} className="p-1.5 rounded-md hover:bg-grey-100" aria-label="Edit">
           <Pencil className="size-4 text-grey-700" />
         </button>
         <button onClick={() => toast.success("Deleted (demo)")} className="p-1.5 rounded-md hover:bg-red-50" aria-label="Delete">
@@ -152,13 +158,46 @@ export default function StorePage() {
         </div>
       </div>
 
-      <div className="mb-4 flex items-center gap-3">
-        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search products by name..." className="w-[360px] border border-grey-400 rounded-md px-3 py-2 text-sm focus:outline-none focus:bg-primary/10 bg-white" />
-        <span className="text-xs text-grey-600">{filtered.length} results</span>
+      <div className="my-6 flex items-center justify-between gap-3">
+        <div className="flex items-center rounded-full border border-grey-300 bg-white p-1" role="tablist" aria-label="Status filter">
+          {(
+            [
+              { key: "all", label: "All" },
+              { key: "active", label: "Active" },
+              { key: "under_review", label: "Under review" },
+              { key: "suspended", label: "Suspended" },
+            ] as const
+          ).map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setStatusFilter(t.key)}
+              role="tab"
+              aria-selected={statusFilter === t.key}
+              className={`px-3 py-1.5 text-sm rounded-full transition-colors ${statusFilter === t.key ? "bg-primary/10 text-primary" : "text-grey-700 hover:bg-grey-100"}`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-3">
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search products..." className="w-[360px] border border-grey-400 rounded-md px-3 py-2 text-sm focus:outline-none focus:bg-primary/10 bg-white" />
+          <span className="text-xs text-grey-600">{filtered.length} results</span>
+        </div>
       </div>
 
-      {loading ? (
-        <div className="border border-grey-300 rounded-xl bg-white p-6 text-sm text-grey-700">Loading products...</div>
+      {isLoading ? (
+        <div className="grid grid-cols-3 mt-6 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="border border-grey-300 rounded-xl overflow-hidden bg-white">
+              <div className="h-[160px] bg-grey-200 animate-pulse" />
+              <div className="p-3">
+                <div className="h-4 w-40 bg-grey-200 rounded animate-pulse" />
+                <div className="mt-2 h-3 w-24 bg-grey-200 rounded animate-pulse" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : filtered.length === 0 ? (
         <div className="border border-grey-300 rounded-xl bg-white p-8 text-center">
           <p className="text-sm text-grey-700">No products yet.</p>
@@ -207,6 +246,18 @@ export default function StorePage() {
       )}
 
       <AddProductModal open={openAdd} onClose={() => setOpenAdd(false)} />
+      <EditProductModal
+        open={!!editProduct}
+        onClose={() => setEditProduct(null)}
+        product={editProduct ? {
+          id: editProduct.id,
+          name: editProduct.name,
+          description: editProduct.description,
+          price: editProduct.price,
+          quantity: editProduct.quantity,
+          currency: editProduct.currency,
+        } : null}
+      />
     </div>
   );
 }

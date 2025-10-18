@@ -6,8 +6,9 @@ import { toast } from "sonner";
 import Image from "next/image";
 import RichTextEditor from "@/components/reusables/RichTextEditor";
 import httpClient from "@/services/http/httpClient";
+import { useQueryClient } from "@tanstack/react-query";
 
-type Step = 1 | 2;
+type Step = 1 | 2 | 3;
 
 type ProductForm = {
   seller_id: number;
@@ -45,6 +46,12 @@ export default function AddProductModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState<string>("");
+  const [createdProductId, setCreatedProductId] = useState<number | null>(null);
+  const queryClient = useQueryClient();
+  // Delivery form state (step 3)
+  const [pickupLocation, setPickupLocation] = useState("");
+  const [estimatedDays, setEstimatedDays] = useState<number | string>("");
+  const [deliveryNotes, setDeliveryNotes] = useState("");
 
   const disabled = useMemo(() => {
     if (step === 1) {
@@ -101,6 +108,10 @@ export default function AddProductModal({
       setIsSubmitting(false);
       setProgress(0);
       setProgressLabel("");
+      setCreatedProductId(null);
+      setPickupLocation("");
+      setEstimatedDays("");
+      setDeliveryNotes("");
     }, 200);
   }
 
@@ -141,11 +152,17 @@ export default function AddProductModal({
         currency: form.currency,
       };
 
-      await httpClient.post("/products", payload);
+      const created: any = await httpClient.post("/products", payload);
+      const newId = created?.data?.product?.id ?? created?.product?.id ?? created?.id ?? null;
+      if (newId) setCreatedProductId(Number(newId));
       setProgress(100);
       setProgressLabel("Done");
       toast.success("Product created");
-      handleClose();
+      // Refresh store list
+      queryClient.invalidateQueries({ queryKey: ["myProducts"] });
+      // Move to optional delivery step
+      setIsSubmitting(false);
+      setStep(3);
     } catch (e) {
       console.error(e);
       setIsSubmitting(false);
@@ -153,6 +170,40 @@ export default function AddProductModal({
       setProgress(0);
       toast.error("Failed to create product");
     }
+  }
+
+  async function handleDeliverySave() {
+    if (!createdProductId) {
+      handleClose();
+      return;
+    }
+    if (!pickupLocation || !estimatedDays) {
+      toast.error("Pickup location and estimated days are required");
+      return;
+    }
+    try {
+      setIsSubmitting(true);
+      await httpClient.post("/deliveries", {
+        product_id: createdProductId,
+        pickup_location: pickupLocation,
+        estimated_delivery_days: Number(estimatedDays),
+        notes: deliveryNotes || undefined,
+      });
+      toast.success("Delivery record created");
+      // Refresh product lists and marketplace
+      queryClient.invalidateQueries({ queryKey: ["myProducts"] });
+      queryClient.invalidateQueries({ queryKey: ["marketplace"] });
+      handleClose();
+    } catch (e) {
+      console.error(e);
+      setIsSubmitting(false);
+      toast.error("Failed to create delivery record");
+    }
+  }
+
+  function handleDeliverySkip() {
+    toast.info("You can add delivery details later. Product stays under review until updated.");
+    handleClose();
   }
 
   function onFilesSelected(list: FileList | null) {
@@ -350,7 +401,7 @@ export default function AddProductModal({
                 </button>
               </div>
             </div>
-          ) : (
+          ) : step === 2 ? (
             <div className="px-6 py-4 max-w-3xl">
               {isSubmitting ? (
                 <div className="flex flex-col items-center justify-center text-center py-10 gap-3">
@@ -411,6 +462,31 @@ export default function AddProductModal({
               <div className="mt-6 flex items-center justify-between">
                 <button onClick={handleBack} disabled={isSubmitting} className="text-sm px-3 py-2 rounded-md hover:bg-grey-100 disabled:opacity-60">Back</button>
                 <button onClick={handleSubmit} disabled={disabled || isSubmitting} className="bg-primary text-white px-4 h-[38px] rounded-md text-sm font-semibold disabled:opacity-60">{isSubmitting ? "Uploading..." : "Create product"}</button>
+              </div>
+            </div>
+          ) : (
+            <div className="px-6 py-4 max-w-3xl">
+              <div className="mb-3 text-xs text-grey-700 bg-primary/5 border border-primary/20 rounded-md px-3 py-2">
+                Adding delivery details helps customers know what to expect. You can skip now and update later; the product will remain under review until updated.
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="text-sm font-medium text-grey-800">Pickup location</label>
+                  <input value={pickupLocation} onChange={(e) => setPickupLocation(e.target.value)} placeholder="123 Main Street, Lagos, Nigeria" className="mt-1 w-full border border-grey-400 rounded-md px-3 py-2 text-sm focus:outline-none focus:bg-primary/10" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-grey-800">Estimated delivery (days)</label>
+                  <input type="number" value={estimatedDays} onChange={(e) => setEstimatedDays(e.target.value)} placeholder="5" className="mt-1 w-full border border-grey-400 rounded-md px-3 py-2 text-sm focus:outline-none focus:bg-primary/10" />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-sm font-medium text-grey-800">Notes</label>
+                  <textarea value={deliveryNotes} onChange={(e) => setDeliveryNotes(e.target.value)} placeholder="Product will be shipped via DHL. Tracking number will be provided upon shipment." className="mt-1 min-h-[100px] w-full border border-grey-400 rounded-md px-3 py-2 text-sm focus:outline-none focus:bg-primary/10" />
+                </div>
+              </div>
+
+              <div className="mt-6 flex items-center justify-between">
+                <button onClick={handleDeliverySkip} className="text-sm px-3 py-2 rounded-md hover:bg-grey-100">Skip for now</button>
+                <button onClick={handleDeliverySave} disabled={isSubmitting} className="bg-primary text-white px-4 h-[38px] rounded-md text-sm font-semibold disabled:opacity-60">Save delivery</button>
               </div>
             </div>
           )}

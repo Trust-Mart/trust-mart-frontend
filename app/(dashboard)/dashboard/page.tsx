@@ -5,9 +5,18 @@ import React from "react";
 import { useAuthStore } from "@/stores/authStore";
 import { Copy, Wallet, ShieldCheck, Info } from "lucide-react";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import usersApi from "@/services/api/usersApi";
 
 const Dashbaord = () => {
   const user = useAuthStore((s) => s.user);
+  const { data: meData, isLoading: isBalanceLoading } = useQuery({
+    queryKey: ["meUser"],
+    queryFn: () => usersApi.me(),
+  });
+  const apiUser = meData?.data.user;
+  const balanceValueRaw = (apiUser as any)?.smartAccountBalance ?? (apiUser as any)?.walletBalance ?? 0;
+  const balanceValue = typeof balanceValueRaw === "number" ? balanceValueRaw : Number(balanceValueRaw || 0);
   const displayName = user?.username || user?.email || "there";
   const maskAddress = (addr?: string | null) => {
     if (!addr) return "—";
@@ -20,7 +29,7 @@ const Dashbaord = () => {
       <div className="flex">
         <div>
           <p className="text-xs text-grey-500">Thursday, October 16th</p>
-          <p className="text-[20px] font-semibold">Hello, {displayName} 👋</p>
+          <p className="text-[22px] font-semibold">Hello, {displayName} 👋</p>
         </div>
       </div>
       <div className="flex gap-8 mt-6">
@@ -28,9 +37,13 @@ const Dashbaord = () => {
           <div className="flex w-full flex-col gap-1">
             <p className="text-sm text-grey-500 font-medium">Total Balance</p>
             <div className="flex items-center justify-between w-full">
-              <p className="text-[25px] font-bold ">
-                <span className="font-sans">$</span>600.50
-              </p>
+              {isBalanceLoading ? (
+                <div className="h-6 w-28 bg-grey-200 rounded animate-pulse" />
+              ) : (
+                <p className="text-[25px] font-bold ">
+                  <span className="font-sans">$</span>{balanceValue.toFixed(2)}
+                </p>
+              )}
               <span>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -125,9 +138,9 @@ const Dashbaord = () => {
               <p className="text-lg font-semibold text-grey-800 flex items-center gap-2">
                 Account Info
               </p>
-              <p className="text-sm text-grey-600 mt-1">
+              {/* <p className="text-sm text-grey-600 mt-1">
                 Quick overview of your account
-              </p>
+              </p> */}
             </div>
             <button
               onClick={() => toast.info("Opening full details soon")}
@@ -139,7 +152,7 @@ const Dashbaord = () => {
 
           <div className="grid grid-cols-2 gap-6 mt-4">
             <div className="flex flex-col gap-1">
-              <span className="text-[11px] uppercase tracking-wide text-grey-500">
+              <span className="text-[12px] uppercase tracking-wide text-grey-500">
                 Smart Wallet
               </span>
               <div className="flex items-center gap-2">
@@ -164,64 +177,39 @@ const Dashbaord = () => {
             </div>
 
             <div className="flex flex-col gap-1">
-              <span className="text-[11px] uppercase tracking-wide text-grey-500">
+              <span className="text-[12px] uppercase tracking-wide text-grey-500">
                 Reputation
               </span>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Good</span>
+                <span className="text-sm font-medium">200</span>
                 <ShieldCheck className="size-4 text-green-600" />
               </div>
             </div>
-
-            <div className="flex flex-col gap-1">
-              <span className="text-[11px] uppercase tracking-wide text-grey-500">
-                Username
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">
-                  {user?.username ?? "—"}
-                </span>
-                {user?.username ? (
-                  <button
-                    onClick={async () => {
-                      await navigator.clipboard.writeText(
-                        user.username as string
-                      );
-                      toast.success("Username copied");
-                    }}
-                    className="p-1 rounded hover:bg-grey-100"
-                    aria-label="Copy username"
-                  >
-                    <Copy className="size-4" />
-                  </button>
-                ) : null}
-              </div>
             </div>
 
-            <div className="flex flex-col gap-1">
-              <span className="text-[11px] uppercase tracking-wide text-grey-500">
-                Email
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium break-all max-w-[220px]">
-                  {user?.email ?? "—"}
-                </span>
-                {user?.email ? (
-                  <button
-                    onClick={async () => {
-                      await navigator.clipboard.writeText(user.email as string);
-                      toast.success("Email copied");
-                    }}
-                    className="p-1 rounded hover:bg-grey-100"
-                    aria-label="Copy email"
-                  >
-                    <Copy className="size-4" />
-                  </button>
-                ) : null}
+            {/* Social connections */}
+            <div className="col-span-2 mt-4">
+              <span className="text-[12px] uppercase tracking-wide text-grey-500">Social accounts</span>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {[
+                  { name: "Instagram", icon: "https://cdn.pixabay.com/photo/2021/06/15/12/14/instagram-6338393_1280.png" },
+                  { name: "X (Twitter)", icon: "https://img.icons8.com/?size=100&id=phOKFKYpe00C&format=png&color=000000" },
+                  { name: "Facebook", icon: "https://img.icons8.com/?size=100&id=13912&format=png&color=000000" },
+                ].map((item) => (
+                  <div key={item.name} className="flex gap-3 items-center justify-between border border-grey-300 rounded-lg p-2 bg-white">
+                    <div className="flex items-center gap-2">
+                      <span className="relative size-6 overflow-hidden rounded">
+                        <Image src={item.icon} alt={item.name} fill className="object-contain" />
+                      </span>
+                      <span className="text-sm text-grey-800">{item.name}</span>
+                    </div>
+                    <button className="text-xs px-2 py-1 rounded-full border border-grey-300 hover:bg-grey-100">Connect</button>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
-        </div>
+
       </div>
 
       <div className="mt-8 flex flex-col gap-4">
