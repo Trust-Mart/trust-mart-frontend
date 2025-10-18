@@ -32,7 +32,7 @@ const EmailSignup = ({ setActiveView }: props) => {
         country: formValues.country || undefined,
       }),
     onSuccess: () => {
-      router.push("/verify");
+      router.push(`/verify?email=${encodeURIComponent(formValues.email)}`);
     },
     onError: (err: unknown) => {
       setSubmitError("Signup failed. Please try again.");

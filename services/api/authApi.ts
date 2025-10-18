@@ -11,6 +11,16 @@ export type SignupRequest = {
 };
 export type SignupResponse = { userId: string };
 
+export type VerifyEmailResponse = {
+  status: boolean;
+  message: string;
+  data: {
+    message: string;
+    token: string;
+  };
+  timestamp: string;
+};
+
 export const authApi = {
   login(payload: LoginRequest) {
     return httpClient.post<LoginResponse, LoginRequest>("/auth/login", payload);
@@ -22,7 +32,7 @@ export const authApi = {
     );
   },
   verifyEmail(payload: { email: string; otp: string }) {
-    return httpClient.post<{ success: boolean }, { email: string; otp: string }>(
+    return httpClient.post<VerifyEmailResponse, { email: string; otp: string }>(
       "/auth/verify-email",
       payload
     );
