@@ -1,13 +1,44 @@
-import type { AxiosRequestConfig, AxiosResponse } from "axios";
+import axios, { type AxiosError, type AxiosRequestConfig, type AxiosResponse } from "axios";
 import axiosClient from "./axiosClient";
 
 export type RequestConfig = AxiosRequestConfig & { 
   // Common extension point for future options
 };
 
+export type HttpError = {
+  message: string;
+  status?: number;
+  code?: string;
+  data?: unknown;
+};
+
+function toHttpError(error: unknown): HttpError {
+  if (axios.isAxiosError(error)) {
+    const err = error as AxiosError<any>;
+    const status = err.response?.status;
+    const code = err.code;
+    const data = err.response?.data;
+    const serverMessage =
+      (typeof data === "string" && data) ||
+      (typeof data === "object" && data?.message) ||
+      (typeof data === "object" && data?.error) ||
+      undefined;
+    const message = serverMessage || err.message || "Request failed";
+    return { message, status, code, data };
+  }
+  if (error instanceof Error) {
+    return { message: error.message };
+  }
+  return { message: "Unknown error" };
+}
+
 async function unwrap<T>(promise: Promise<AxiosResponse<T>>): Promise<T> {
-  const res = await promise;
-  return res.data;
+  try {
+    const res = await promise;
+    return res.data;
+  } catch (error) {
+    throw toHttpError(error);
+  }
 }
 
 export const httpClient = {

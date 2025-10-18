@@ -1,9 +1,91 @@
+"use client";
 import GoogleAuthIcon from "@/components/icons/GoogleIcon";
 import Image from "next/image";
 import Link from "next/link";
-import React from "react";
+import React, { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import authApi from "@/services/api/authApi";
+import { setAccessToken } from "@/services/auth/tokenProvider";
+import { useAuthStore } from "@/stores/authStore";
+import usersApi from "@/services/api/usersApi";
+import { useRouter } from "next/navigation";
+import type { HttpError } from "@/services/http/httpClient";
 
 const Login = () => {
+  const router = useRouter();
+  const setToken = useAuthStore((s) => s.setToken);
+  const setUser = useAuthStore((s) => s.setUser);
+
+  const [formValues, setFormValues] = useState({ identifier: "", password: "" });
+  const [errors, setErrors] = useState<{ identifier?: string; password?: string; submit?: string }>({});
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: async () => {
+      const res = await authApi.login({ identifier: formValues.identifier, password: formValues.password });
+      const token = res.data.token;
+      setAccessToken(token);
+      setToken(token);
+      const loginUser = res.data.user;
+      setUser({
+        id: loginUser.id,
+        email: loginUser.email,
+        username: loginUser.username,
+        roles: loginUser.roles,
+        walletAddress: null,
+        smartAccountAddress: loginUser.smartAccountAddress ?? null,
+        smartAccountBalance: loginUser.smartAccountBalance ?? null,
+      });
+      // fetch full details
+      try {
+        const me = await usersApi.me();
+        const u = me.data.user;
+        setUser({
+          id: u.id,
+          email: u.email,
+          username: u.username ?? null,
+          roles: u.roles,
+          walletAddress: u.walletAddress ?? null,
+          smartAccountAddress: u.smartAccountAddress ?? null,
+          smartAccountBalance: u.smartAccountBalance ?? null,
+        });
+      } catch {}
+      return true;
+    },
+    onSuccess: () => router.push("/dashboard"),
+    onError: (error: unknown) => {
+      const err = (error as HttpError) || ({} as HttpError);
+      const data = (err.data as any) || {};
+      const fieldErrors = data.errors || {};
+      const identifierMsg = fieldErrors.identifier || fieldErrors.email;
+      const passwordMsg = fieldErrors.password;
+      setErrors((prev) => ({
+        ...prev,
+        identifier: identifierMsg ?? prev.identifier,
+        password: passwordMsg ?? prev.password,
+        submit: !identifierMsg && !passwordMsg ? (err.message || "Request failed") : undefined,
+      }));
+    },
+  });
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const { id, value } = e.target;
+    setFormValues((prev) => ({ ...prev, [id]: value }));
+  }
+
+  function validate(): boolean {
+    const next: { identifier?: string; password?: string } = {};
+    if (!formValues.identifier) next.identifier = "Email or username is required";
+    if (!formValues.password) next.password = "Password is required";
+    setErrors((prev) => ({ ...prev, ...next, submit: undefined }));
+    return Object.keys(next).length === 0;
+  }
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!validate()) return;
+    mutate();
+  }
+
   return (
     <div className="h-full flex flex-col justify-center mx-auto  max-w-[500px] ">
       <Image
@@ -20,20 +102,26 @@ const Login = () => {
         Sign in to your account to continue
       </p>
 
-      <form action="" className="mt-6 flex flex-col gap-4 w-[90%]">
+      <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4 w-[90%]">
         <div className="flex flex-col gap-1.5 relative">
           <label
-            htmlFor="email"
+            htmlFor="identifier"
             className="text-sm font-semibold text-grey-800"
           >
-            Email <span className="text-red-500">*</span>{" "}
+            Email or Username <span className="text-red-500">*</span>{" "}
           </label>
           <input
-            type="email"
-            id="email"
-            placeholder="Email"
+            type="text"
+            id="identifier"
+            placeholder="Email or Username"
+            value={formValues.identifier}
+            onChange={handleChange}
+            autoComplete="username"
             className="w-full border border-grey-500 rounded text-sm px-3 py-2.5 bg-transparent transition-all ease-linear duration-300 focus:outline-none focus:bg-primary/10"
           />
+          {errors.identifier ? (
+            <span className="text-xs text-red-500 mt-1">{errors.identifier}</span>
+          ) : null}
           <span className="absolute right-3 top-11 -translate-y-1/2">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -61,11 +149,17 @@ const Login = () => {
               Password <span className="text-red-500">*</span>{" "}
             </label>
             <input
-              type="text"
+              type="password"
               id="password"
               placeholder="Password"
+              value={formValues.password}
+              onChange={handleChange}
+              autoComplete="current-password"
               className="w-full border border-grey-500 rounded text-sm px-3 py-2.5 bg-transparent transition-all ease-linear duration-300 focus:outline-none focus:bg-primary/10"
             />
+            {errors.password ? (
+              <span className="text-xs text-red-500 mt-1">{errors.password}</span>
+            ) : null}
             <span className="absolute right-3 top-11 -translate-y-1/2">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -89,8 +183,16 @@ const Login = () => {
           </p>
         </div>
 
-        <button className="bg-primary text-white px-4 mt-2 rounded-md h-[45px]  font-medium flex gap-3 cursor-pointer items-center justify-center hover:bg-primary/80 transition-all ease-linear duration-300">
-          Continue{" "}
+        {errors.submit ? (
+          <div className="text-sm text-red-600">{errors.submit}</div>
+        ) : null}
+
+        <button
+          type="submit"
+          disabled={isPending}
+          className="bg-primary text-white px-4 mt-2 rounded-md h-[45px]  font-medium flex gap-3 cursor-pointer items-center justify-center hover:bg-primary/80 transition-all ease-linear duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {isPending ? "Signing in..." : "Continue"}
         </button>
       </form>
 

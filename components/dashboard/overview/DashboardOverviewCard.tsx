@@ -9,9 +9,9 @@ type DashboardOverviewCardPropType = {
 
 const DashboardOverviewCard = ({ title, amount, percent, bgStyle }: DashboardOverviewCardPropType) => {
     return (
-        <div className={`w-full rounded-xl ${bgStyle} flex flex-col gap-2.5 justify-center p-4 lg:p-6`}>
+        <div className={`w-full rounded-xl ${bgStyle} flex flex-col gap-2.5 justify-center p-3 lg:p-4`}>
           <p className="text-xs md:text-sm text-[#667185]">{title}</p>
-          <h3 className="text-base md:text-xl font-semibold text-[#101928]">{amount}</h3>
+          <h3 className="text-base font-semibold text-[#101928]">{amount}</h3>
           <div className="flex items-center gap-1">
             <span className={`p-1.5 ${percent < 0 ? 'bg-[#FFEBEB]' : 'bg-[#E7FAF3]'} flex items-center justify-center rounded-full`}>
               {percent < 0 ? (

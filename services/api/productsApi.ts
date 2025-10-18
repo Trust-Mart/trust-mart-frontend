@@ -1,0 +1,37 @@
+import httpClient from "../http/httpClient";
+
+export type SellerProduct = {
+  id: number;
+  seller_id: string;
+  name: string;
+  description: string;
+  image_cid: string[];
+  price: number;
+  quantity: number;
+  currency: string;
+  status: "active" | "pending" | string;
+  ai_verification_score?: number | null;
+  createdAt: string;
+  updatedAt: string;
+  seller?: { id: number; username?: string };
+};
+
+export type SellerProductsResponse = {
+  status: boolean;
+  message: string;
+  data: {
+    products: SellerProduct[];
+    pagination: { page: number; limit: number; total: number; pages: number };
+  };
+  timestamp: string;
+};
+
+export const productsApi = {
+  myProducts(page = 1, limit = 20) {
+    return httpClient.get<SellerProductsResponse>(`/products/seller/my-products?page=${page}&limit=${limit}`);
+  },
+};
+
+export default productsApi;
+
+

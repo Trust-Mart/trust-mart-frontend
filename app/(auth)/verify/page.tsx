@@ -10,6 +10,7 @@ import { setAccessToken } from "@/services/auth/tokenProvider";
 import { useAuthStore } from "@/stores/authStore";
 import usersApi from "@/services/api/usersApi";
 import type { AuthUser } from "@/stores/authStore";
+import type { HttpError } from "@/services/http/httpClient";
 
 const Verify = () => {
   const router = useRouter();
@@ -45,11 +46,10 @@ const Verify = () => {
     onSuccess: () => {
       router.push("/dashboard");
     },
-    onError: () => {
-      setErrors((prev) => ({
-        ...prev,
-        submit: "Verification failed. Check code and try again.",
-      }));
+    onError: (error: unknown) => {
+      const err = (error as HttpError) || ({} as HttpError);
+      const message = err.message || "Verification failed. Check code and try again.";
+      setErrors((prev) => ({ ...prev, submit: message }));
     },
   });
 

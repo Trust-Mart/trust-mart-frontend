@@ -1,7 +1,24 @@
 import httpClient from "../http/httpClient";
 
-export type LoginRequest = { email: string; password: string };
-export type LoginResponse = { accessToken: string };
+export type LoginRequest = { identifier: string; password: string };
+export type LoginResponse = {
+  status: boolean;
+  message: string;
+  data: {
+    message: string;
+    user: {
+      id: number;
+      username: string;
+      email: string;
+      isverified: boolean;
+      smartAccountAddress?: string | null;
+      smartAccountBalance?: string | null;
+      roles?: string[];
+    };
+    token: string;
+  };
+  timestamp: string;
+};
 
 export type SignupRequest = {
   email: string;
