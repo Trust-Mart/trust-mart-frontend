@@ -16,6 +16,26 @@ declare global {
   }
 }
 
+// PKCE helper functions for Twitter
+function generateRandomString(length: number): string {
+  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+  let text = '';
+  for (let i = 0; i < length; i++) {
+    text += possible.charAt(Math.floor(Math.random() * possible.length));
+  }
+  return text;
+}
+
+async function generateCodeChallenge(codeVerifier: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(codeVerifier);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
+
 const Dashbaord = () => {
   const user = useAuthStore((s) => s.user);
   const { data: meData, isLoading: isBalanceLoading } = useQuery({
@@ -265,35 +285,38 @@ const Dashbaord = () => {
                       >
                         Connect
                       </button>
-                    ) : item.name === "Instagram" ? (
+                    ) : item.name === "X (Twitter)" ? (
                       <button
                         onClick={async () => {
                           try {
-                            console.log("Instagram connect clicked");
-                            // Instagram OAuth - direct Instagram API
-                            const clientId = process.env.NEXT_PUBLIC_INSTAGRAM_APP_ID;
-                            const redirectUri = `${window.location.origin}/oauth/instagram/callback`;
-                            const scope = 'instagram_basic';
+                            console.log("Twitter connect clicked");
+                            // Twitter OAuth 2.0 with PKCE
+                            const clientId = process.env.NEXT_PUBLIC_TWITTER_CLIENT_ID;
+                            const redirectUri = `${window.location.origin}/oauth/twitter/callback`;
                             
-                            console.log("Instagram Client ID:", clientId);
+                            console.log("Twitter Client ID:", clientId);
                             console.log("Redirect URI:", redirectUri);
-                            console.log("Scope:", scope);
                             
                             if (!clientId) {
-                              toast.error("Instagram App ID not configured");
+                              toast.error("Twitter Client ID not configured");
                               return;
                             }
 
-                           
+                            // Generate PKCE parameters
+                            const codeVerifier = generateRandomString(128);
+                            const codeChallenge = await generateCodeChallenge(codeVerifier);
                             
-                            // Use Instagram OAuth endpoint with proper parameters
-                            const authUrl = `https://api.instagram.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&response_type=code&state=instagram_connect`;
+                            // Store verifier for later use
+                            sessionStorage.setItem('twitter_pkce_verifier', codeVerifier);
+                            
+                            // Twitter OAuth 2.0 URL
+                            const authUrl = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=tweet.read%20users.read&state=twitter_connect&code_challenge=${codeChallenge}&code_challenge_method=S256`;
                             
                             console.log("Full Auth URL:", authUrl);
                             window.open(authUrl, '_blank');
                           } catch (e: any) {
-                            console.error("Instagram connect error:", e);
-                            toast.error(e?.message || "Failed to connect Instagram");
+                            console.error("Twitter connect error:", e);
+                            toast.error(e?.message || "Failed to connect Twitter");
                           }
                         }}
                         className="text-xs px-2 cursor-pointer  py-1 rounded-full border border-grey-300 hover:bg-grey-100"

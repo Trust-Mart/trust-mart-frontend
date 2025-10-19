@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import socialApi from "@/services/api/socialApi";
 
-export default function FacebookCallbackPage() {
+function FacebookCallbackContent() {
   const search = useSearchParams();
   const router = useRouter();
   const [processing, setProcessing] = useState(true);
@@ -38,6 +38,18 @@ export default function FacebookCallbackPage() {
     <div className="w-full h-[60vh] flex items-center justify-center">
       <div className="text-sm text-grey-700">Finishing Facebook connection...</div>
     </div>
+  );
+}
+
+export default function FacebookCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full h-[60vh] flex items-center justify-center">
+        <div className="text-sm text-grey-700">Loading...</div>
+      </div>
+    }>
+      <FacebookCallbackContent />
+    </Suspense>
   );
 }
 
