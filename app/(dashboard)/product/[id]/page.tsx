@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { toast } from "sonner";
 import productsApi, { type SellerProduct } from "@/services/api/productsApi";
 
 export default function ProductPage() {
@@ -34,9 +35,15 @@ export default function ProductPage() {
   if (loading) {
     return (
       <div className="w-full">
-        <div className="h-[260px] rounded-xl bg-grey-200 animate-pulse" />
-        <div className="mt-4 h-6 w-64 bg-grey-200 rounded animate-pulse" />
+        <div className="h-[420px] rounded-xl bg-grey-200 animate-pulse" />
+        <div className="mt-6 h-7 w-64 bg-grey-200 rounded animate-pulse" />
         <div className="mt-2 h-4 w-80 bg-grey-200 rounded animate-pulse" />
+        <div className="mt-6 grid grid-cols-3 gap-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-8 rounded-full bg-grey-200 animate-pulse" />
+          ))}
+        </div>
+        <div className="mt-6 h-24 bg-grey-200 rounded animate-pulse" />
       </div>
     );
   }
@@ -53,10 +60,12 @@ export default function ProductPage() {
   const images = product.image_cid || [];
   const hasMany = images.length > 1;
   const imgSrc = images.length ? `${gatewayBase}${images[idx]}` : "";
+  const updatedAt = product.updatedAt ? new Date(product.updatedAt) : null;
 
   return (
-    <div className="w-full grid grid-cols-2 gap-8">
-      <div className="relative h-[360px] rounded-xl overflow-hidden border">
+    <div className="w-full">
+      {/* Top hero image slider */}
+      <div className="relative h-[440px] rounded-xl overflow-hidden border">
         {imgSrc ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={imgSrc} alt={product.name} className="object-cover w-full h-full" />
@@ -65,25 +74,51 @@ export default function ProductPage() {
         )}
         {hasMany ? (
           <>
-            <button type="button" className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 text-white" onClick={() => setIdx((v) => (v - 1 + images.length) % images.length)} aria-label="Prev">
+            <button type="button" className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 text-white" onClick={() => setIdx((v) => (v - 1 + images.length) % images.length)} aria-label="Prev">
               <ChevronLeft className="size-4" />
             </button>
-            <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 text-white" onClick={() => setIdx((v) => (v + 1) % images.length)} aria-label="Next">
+            <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 text-white" onClick={() => setIdx((v) => (v + 1) % images.length)} aria-label="Next">
               <ChevronRight className="size-4" />
             </button>
           </>
         ) : null}
       </div>
 
-      <div>
-        <h1 className="text-[22px] font-bold">{product.name}</h1>
-        <p className="text-sm text-grey-700 mt-1">{product.currency} {Number(product.price).toFixed(2)}</p>
-        <div className="prose prose-sm mt-4 max-w-none" dangerouslySetInnerHTML={{ __html: product.description || "" }} />
-
-        <div className="mt-6 flex items-center gap-3">
-          <button className="px-4 h-[38px] rounded-full text-sm font-semibold border border-grey-400 hover:bg-grey-100">Add to cart</button>
-          <button className="px-4 h-[38px] rounded-full text-sm font-semibold bg-primary text-white hover:bg-primary/80">Buy now</button>
+      {/* Title and price row */}
+      <div className="mt-6 flex items-start justify-between gap-6">
+        <div>
+          <h1 className="text-[22px] font-bold">{product.name}</h1>
+          <p className="text-sm text-grey-600 mt-1">by {product.seller?.username || "Seller"}</p>
+          {updatedAt ? (
+            <p className="text-[11px] text-grey-500 mt-1">Last updated {updatedAt.toLocaleString()}</p>
+          ) : null}
         </div>
+        <div className="text-right">
+          <p className="text-[22px] font-bold">{product.currency} {Number(product.price).toFixed(2)}</p>
+          <p className="text-xs text-emerald-700">{product.status === "active" ? "• AVAILABLE" : product.status ? `• ${String(product.status).toUpperCase().replace(/_/g, " ")}` : null}</p>
+        </div>
+      </div>
+
+      {/* Chips */}
+      <div className="mt-4 flex items-center gap-2">
+        <span className="text-[11px] px-2.5 py-1 rounded-full bg-grey-100 text-grey-700 border">Qty {Number(product.quantity ?? 0)}</span>
+        <span className="text-[11px] px-2.5 py-1 rounded-full bg-grey-100 text-grey-700 border">Currency {product.currency}</span>
+      </div>
+
+      {/* Description */}
+      <div className="mt-6">
+        <h2 className="text-[15px] font-semibold mb-2">Description</h2>
+        <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: product.description || "" }} />
+      </div>
+
+      {/* CTA */}
+      <div className="mt-8 flex items-center gap-3">
+        <button
+          onClick={() => toast.info("Checkout coming soon")}
+          className="px-5 h-[42px] rounded-full text-sm font-semibold bg-primary text-white hover:bg-primary/80"
+        >
+          Buy now
+        </button>
       </div>
     </div>
   );

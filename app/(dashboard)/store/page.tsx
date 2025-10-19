@@ -256,6 +256,8 @@ export default function StorePage() {
           price: editProduct.price,
           quantity: editProduct.quantity,
           currency: editProduct.currency,
+          status: editProduct.status,
+          image_cid: editProduct.image_cid,
         } : null}
       />
     </div>

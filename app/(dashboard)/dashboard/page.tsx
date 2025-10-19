@@ -7,6 +7,14 @@ import { Copy, Wallet, ShieldCheck, Info } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import usersApi from "@/services/api/usersApi";
+// Facebook SDK will be loaded dynamically
+
+// Add Facebook SDK types
+declare global {
+  interface Window {
+    FB: any;
+  }
+}
 
 const Dashbaord = () => {
   const user = useAuthStore((s) => s.user);
@@ -40,9 +48,9 @@ const Dashbaord = () => {
               {isBalanceLoading ? (
                 <div className="h-6 w-28 bg-grey-200 rounded animate-pulse" />
               ) : (
-                <p className="text-[25px] font-bold ">
+              <p className="text-[25px] font-bold ">
                   <span className="font-sans">$</span>{balanceValue.toFixed(2)}
-                </p>
+              </p>
               )}
               <span>
                 <svg
@@ -107,30 +115,30 @@ const Dashbaord = () => {
 
       <div className="flex gap-8 mt-8 h-auto">
         <div className="w-1/2 grid grid-cols-2 gap-4">
-          <DashboardOverviewCard
-            title="Active escrow"
-            amount="600.50"
-            percent={10}
-            bgStyle="bg-[#E6F2F1]"
-          />
-          <DashboardOverviewCard
-            title="Active escrow"
-            amount="600.50"
-            percent={10}
-            bgStyle="bg-[#DDF7FF]"
-          />
-          <DashboardOverviewCard
-            title="Active escrow"
-            amount="600.50"
-            percent={10}
-            bgStyle="bg-[#D8FFE3]"
-          />
-          <DashboardOverviewCard
-            title="Active escrow"
-            amount="600.50"
-            percent={10}
-            bgStyle="bg-[#F9FFE3]"
-          />
+        <DashboardOverviewCard
+          title="Active escrow"
+          amount="600.50"
+          percent={10}
+          bgStyle="bg-[#E6F2F1]"
+        />
+        <DashboardOverviewCard
+          title="Active escrow"
+          amount="600.50"
+          percent={10}
+          bgStyle="bg-[#DDF7FF]"
+        />
+        <DashboardOverviewCard
+          title="Active escrow"
+          amount="600.50"
+          percent={10}
+          bgStyle="bg-[#D8FFE3]"
+        />
+        <DashboardOverviewCard
+          title="Active escrow"
+          amount="600.50"
+          percent={10}
+          bgStyle="bg-[#F9FFE3]"
+        />
         </div>
         <div className="w-1/2  bg-white rounded-xl shadow-xs border border-grey-300 p-4 flex flex-col justify-between">
           <div className="flex items-start justify-between">
@@ -187,7 +195,6 @@ const Dashbaord = () => {
             </div>
             </div>
 
-            {/* Social connections */}
             <div className="col-span-2 mt-4">
               <span className="text-[12px] uppercase tracking-wide text-grey-500">Social accounts</span>
               <div className="mt-2 flex flex-wrap gap-2">
@@ -203,7 +210,99 @@ const Dashbaord = () => {
                       </span>
                       <span className="text-sm text-grey-800">{item.name}</span>
                     </div>
-                    <button className="text-xs px-2 py-1 rounded-full border border-grey-300 hover:bg-grey-100">Connect</button>
+                    {item.name === "Facebook" ? (
+                      <button
+                        onClick={async () => {
+                          try {
+                            if (!window.FB) {
+                              await new Promise((resolve) => {
+                                const script = document.createElement('script');
+                                script.src = 'https://connect.facebook.net/en_US/sdk.js';
+                                script.onload = () => {
+                                  window.FB.init({
+                                    appId: process.env.NEXT_PUBLIC_FACEBOOK_APP_ID,
+                                    cookie: true,
+                                    xfbml: true,
+                                    version: 'v18.0'
+                                  });
+                                  resolve(true);
+                                };
+                                document.head.appendChild(script);
+                              });
+                            }
+
+                            window.FB.login((response: any) => {
+                              console.log('Full Facebook response:', response);
+                              console.log('Auth response:', response.authResponse);
+                              
+                              if (response.authResponse) {
+                                window.FB.api('/me', { fields: 'id,name,picture' }, (userInfo: any) => {
+                                  console.log('User profile info:', userInfo);
+                                  
+                                  fetch('/api/connect/facebook', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                      accessToken: response.authResponse.accessToken,
+                                      userID: response.authResponse.userID,
+                                      userInfo: userInfo
+                                    })
+                                  }).then(() => {
+                                    toast.success('Facebook connected!');
+                                  }).catch(() => {
+                                    toast.error('Failed to save connection');
+                                  });
+                                });
+                              } else {
+                                toast.error('Facebook login cancelled');
+                              }
+                            }, { scope: 'public_profile' });
+                          } catch (e: any) {
+                            toast.error(e?.message || "Failed to connect Facebook");
+                          }
+                        }}
+                        className="text-xs px-2 py-1 rounded-full border border-grey-300 hover:bg-grey-100"
+                      >
+                        Connect
+                      </button>
+                    ) : item.name === "Instagram" ? (
+                      <button
+                        onClick={async () => {
+                          try {
+                            console.log("Instagram connect clicked");
+                            // Instagram OAuth - direct Instagram API
+                            const clientId = process.env.NEXT_PUBLIC_INSTAGRAM_APP_ID;
+                            const redirectUri = `${window.location.origin}/oauth/instagram/callback`;
+                            const scope = 'instagram_basic';
+                            
+                            console.log("Instagram Client ID:", clientId);
+                            console.log("Redirect URI:", redirectUri);
+                            console.log("Scope:", scope);
+                            
+                            if (!clientId) {
+                              toast.error("Instagram App ID not configured");
+                              return;
+                            }
+
+                           
+                            
+                            // Use Instagram OAuth endpoint with proper parameters
+                            const authUrl = `https://api.instagram.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&response_type=code&state=instagram_connect`;
+                            
+                            console.log("Full Auth URL:", authUrl);
+                            window.open(authUrl, '_blank');
+                          } catch (e: any) {
+                            console.error("Instagram connect error:", e);
+                            toast.error(e?.message || "Failed to connect Instagram");
+                          }
+                        }}
+                        className="text-xs px-2 cursor-pointer  py-1 rounded-full border border-grey-300 hover:bg-grey-100"
+                      >
+                        Connect
+                      </button>
+                    ) : (
+                      <button className="text-xs px-2 py-1 rounded-full border border-grey-300 hover:bg-grey-100">Connect</button>
+                    )}
                   </div>
                 ))}
               </div>
