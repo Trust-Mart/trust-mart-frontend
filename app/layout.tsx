@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { DM_Sans, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ReactQueryProvider from "./ReactQueryProvider";
+import { Suspense } from "react";
 
 const dmsans = DM_Sans({
   variable: "--font-dm",
@@ -25,7 +26,13 @@ export default function RootLayout({
         className={`${dmsans.className} antialiased`}
       >
         <ReactQueryProvider>
-          {children}
+          <Suspense fallback={
+            <div className="w-full h-screen flex items-center justify-center">
+              <div className="text-sm text-grey-700">Loading...</div>
+            </div>
+          }>
+            {children}
+          </Suspense>
         </ReactQueryProvider>
       </body>
     </html>
